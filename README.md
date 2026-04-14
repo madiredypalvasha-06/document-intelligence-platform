@@ -8,6 +8,12 @@ A full-stack web application with AI/RAG integration for processing book data an
 
 ## Screenshots
 
+> **Note:** To add screenshots, run the application and take screenshots of the following pages. Save them to `docs/images/`:
+> - `dashboard.png` - Dashboard page (http://localhost:3000)
+> - `books.png` - Book library (http://localhost:3000/books)
+> - `book-detail.png` - Book detail (http://localhost:3000/books/1)
+> - `qa.png` - Q&A interface (http://localhost:3000/qa)
+
 ### Dashboard
 ![Dashboard](docs/images/dashboard.png)
 *The main dashboard displays platform statistics, featured books, and system health status.*
@@ -34,6 +40,9 @@ A full-stack web application with AI/RAG integration for processing book data an
 - **Book Recommendations**: AI-driven similar book suggestions
 - **Web Scraping**: Automated book data collection from Goodreads, Amazon, Open Library
 - **Modern UI**: Professional gold, cream, black and white themed interface
+- **Background Processing**: Celery-powered async task processing
+- **Redis Caching**: Persistent caching layer for fast responses
+- **Chat History**: Save and retrieve conversation sessions
 
 ---
 
@@ -45,6 +54,8 @@ A full-stack web application with AI/RAG integration for processing book data an
 | Django REST Framework | REST API backend |
 | SQLite | Primary database (MySQL supported) |
 | ChromaDB | Vector database for embeddings |
+| Celery | Background task processing |
+| Redis | Caching and message broker |
 | Selenium | Web scraping automation |
 | Sentence Transformers | Embedding generation |
 | LM Studio | Local LLM (no API costs) |
@@ -68,7 +79,7 @@ A full-stack web application with AI/RAG integration for processing book data an
 git clone https://github.com/madiredypalvasha-06/document-intelligence-platform.git
 cd document-intelligence-platform
 
-# Start all services
+# Start all services (includes Redis, Celery worker, beat)
 docker-compose up --build
 
 # Access the application
@@ -95,6 +106,12 @@ python manage.py migrate
 
 # Start the server
 python manage.py runserver
+
+# In another terminal, start Celery worker (for background tasks)
+celery -A books worker --loglevel=info
+
+# In another terminal, start Celery beat (for scheduled tasks)
+celery -A books beat --loglevel=info
 ```
 
 #### Frontend Setup
@@ -136,9 +153,10 @@ http://localhost:8000/api/
 | GET | `/books/` | List all books (paginated) |
 | GET | `/books/{id}/` | Get book details |
 | POST | `/books/upload/` | Upload a book |
-| POST | `/books/{id}/process/` | Generate AI insights |
+| POST | `/books/{id}/process/` | Generate AI insights (use `background=true` for Celery) |
 | GET | `/books/{id}/recommendations/` | Similar books |
 | GET | `/books/stats/` | Platform statistics |
+| POST | `/books/load-samples/` | Load sample books |
 
 ### Q&A API
 
@@ -178,6 +196,11 @@ curl -X POST http://localhost:8000/api/qa/ \
   -H "Content-Type: application/json" \
   -d '{"question": "What is the genre?", "book_id": 1}'
 
+# Ask question with background processing
+curl -X POST http://localhost:8000/api/books/1/process/ \
+  -H "Content-Type: application/json" \
+  -d '{"background": true}'
+
 # Start scraping
 curl -X POST http://localhost:8000/api/scrape/ \
   -H "Content-Type: application/json" \
@@ -188,41 +211,80 @@ curl -X POST http://localhost:8000/api/scrape/ \
 
 ## Sample Questions and Answers
 
-The Q&A system can answer various questions about books. Here are examples:
+The Q&A system gives **targeted, specific answers** for different question types:
 
-### Genre Classification
-**Q:** "What genre is this book?"
-**A:** Returns the primary genre and related genres based on content analysis.
+### Who Would Enjoy This Book?
+**Q:** "Who would enjoy this book?" (The Adventures of Sherlock Holmes)
+```
+# The Adventures of Sherlock Holmes
+
+## Who Would Enjoy This Book
+
+This book is perfect for **fans of detective stories, puzzle solvers, and those who love uncovering hidden clues**.
+
+**You might enjoy this if you like:**
+- Solving puzzles and uncovering secrets
+- Suspenseful storytelling with unexpected twists
+- Complex characters with hidden motives
+```
 
 ### Price Information
-**Q:** "How much does this book cost?"
-**A:** Returns the current price from the database.
+**Q:** "How much is it?"
+```
+# The Adventures of Sherlock Holmes
 
-### Book Summary
-**Q:** "Give me a brief summary of the plot"
-**A:** Returns an AI-generated summary from the book's insights.
+## Pricing Information
+
+**Current Price:** $19.99
+
+This book is available at this price from most major online retailers including Amazon, Barnes & Noble, and book marketplaces.
+
+**Note:** Prices may vary depending on:
+- Format (hardcover, paperback, ebook, or audiobook)
+- Retailer and any ongoing promotions
+- Condition (new vs. used copies)
+```
+
+### Genre Classification
+**Q:** "What genre is this?"
+```
+# The Adventures of Sherlock Holmes
+
+## Genre Analysis
+
+**Primary Genre:** Mystery
+**Classification Confidence:** 60%
+
+**Genre Indicators:**
+- Mystery
+
+This book falls primarily within the **Mystery** category, offering readers suspenseful and engaging narratives that keep you guessing.
+```
+
+### Plot Summary
+**Q:** "Give me a summary"
+```
+# The Adventures of Sherlock Holmes
+
+## Plot Summary
+
+Twelve cases of the famous detective.
+
+This summary captures the essence of the story, highlighting the main plot points and central conflict that drives the narrative forward.
+```
 
 ### Author Information
 **Q:** "Who is the author?"
-**A:** Returns the author's name with proper formatting.
+```
+# The Adventures of Sherlock Holmes
 
-### Similar Books
-**Q:** "What books would you recommend?"
-**A:** Returns similar books based on genre, themes, and content.
+## About the Author
 
-### Example API Response
+**Arthur Conan Doyle** is the author of "The Adventures of Sherlock Holmes".
 
-```json
-{
-  "answer": "# The Great Gatsby\n\n## Summary\nA novel set in the Jazz Age that examines the American Dream through the lens of wealth, love, and tragedy.\n\n## Genre\n**Primary Genre:** Literary Fiction\n**Key Themes:** American Dream, wealth, love",
-  "sources": [],
-  "session_id": "session_1234567890",
-  "retrieved_chunks": 0,
-  "confidence": 1.0,
-  "model_used": "lm-studio",
-  "response_time": 0.45,
-  "cached": false
-}
+The author's work in this book demonstrates their unique storytelling ability and narrative style. Their writing brings depth and authenticity to the characters and world they've created.
+
+If you'd like to explore more works by this author, check out our book recommendations below.
 ```
 
 ---
@@ -239,21 +301,24 @@ document-intelligence-platform/
 │   │   ├── ai_services.py     # AI/LLM integration
 │   │   ├── rag_pipeline.py    # RAG implementation
 │   │   ├── scraper.py         # Web scraping
-│   │   └── middleware.py       # Rate limiting
-│   ├── config/                 # Django settings
-│   ├── tests/                  # Unit tests
-│   ├── requirements.txt        # Python dependencies
+│   │   ├── tasks.py           # Celery background tasks
+│   │   ├── cache.py           # Redis caching layer
+│   │   ├── celery.py          # Celery configuration
+│   │   └── middleware.py      # Rate limiting
+│   ├── config/                # Django settings
+│   ├── tests/                 # Unit tests
+│   ├── requirements.txt      # Python dependencies
 │   └── manage.py
 ├── frontend/
 │   ├── src/
-│   │   ├── app/               # Next.js pages
-│   │   ├── components/         # React components
-│   │   ├── lib/               # API client
-│   │   └── store/             # Zustand store
+│   │   ├── app/              # Next.js pages
+│   │   ├── components/        # React components
+│   │   ├── lib/              # API client
+│   │   └── store/            # Zustand store
 │   ├── package.json
 │   └── tailwind.config.js
 ├── docs/
-│   └── USER_GUIDE.md          # Complete user guide
+│   └── USER_GUIDE.md         # Complete user guide
 ├── docker-compose.yml
 └── README.md
 ```
@@ -273,16 +338,6 @@ Professional Gold, Cream, Black & White:
 | Obsidian | `#1a1a1a` | Primary text |
 | Charcoal | `#3d3d3d` | Secondary text |
 | White | `#ffffff` | Content areas |
-
----
-
-## Adding Screenshots
-
-Place your screenshots in `docs/images/` with these names:
-- `dashboard.png` - Dashboard page screenshot
-- `books.png` - Book library page screenshot
-- `book-detail.png` - Book detail page screenshot
-- `qa.png` - Q&A interface screenshot
 
 ---
 
