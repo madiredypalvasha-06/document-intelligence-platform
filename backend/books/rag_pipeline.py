@@ -659,54 +659,66 @@ Please provide a comprehensive answer based on the context above. Include releva
         if book_title:
             answer_parts.append(f"# {book_title}\n\n")
         
-        # Comprehensive response for general questions
-        is_general = any(word in prompt_lower for word in ['about', 'tell me', 'info', 'information', 'this book', 'what is', 'what\'s', 'describe'])
+        # Check for SPECIFIC question types FIRST - before general questions
+        # This ensures targeted answers instead of comprehensive responses
         
-        if is_general:
-            # Provide full comprehensive response for general questions
-            if 'summary' in ai_insights:
-                answer_parts.append(f"## Summary\n{ai_insights['summary']}\n\n")
+        # Who would enjoy / target audience (MUST be first to catch "enjoy" before recommendations)
+        if any(word in prompt_lower for word in ['who would enjoy', 'target audience', 'perfect for', 'good for', 'best for', 'recommended for', 'audience', 'suitable for', 'is this for', 'should i read']):
+            answer_parts.append("## Who Would Enjoy This Book\n\n")
             
-            if book_author:
-                answer_parts.append(f"## About the Author\n**{book_author}** has crafted a compelling narrative that explores deep human experiences and emotions. Their writing style brings the story to life with vivid descriptions and memorable characters.\n\n")
+            genre_descriptions = {
+                'mystery': "fans of detective stories, puzzle solvers, and those who love uncovering hidden clues",
+                'thriller': "readers who crave suspense, fast-paced narratives, and edge-of-your-seat excitement",
+                'horror': "lovers of the macabre, supernatural enthusiasts, and readers who enjoy being scared",
+                'romance': "those who appreciate love stories, emotional journeys, and heartwarming (or heartbreaking) tales",
+                'fantasy': "readers who enjoy imaginative worlds, magic systems, and epic adventures",
+                'science fiction': "fans of futuristic concepts, technology enthusiasts, and speculative thinkers",
+                'historical fiction': "history buffs, period drama lovers, and those interested in different eras",
+                'literary fiction': "readers who appreciate rich prose, complex characters, and deep themes",
+                'adventure': "thrill-seekers, action lovers, and those who enjoy journeys of discovery",
+                'biography': "those interested in real lives, inspiring stories, and historical figures",
+                'self-help': "personal development enthusiasts, those seeking guidance, and motivation seekers",
+                'business': "professionals, entrepreneurs, and those interested in business strategy",
+            }
             
             if 'genre_analysis' in ai_insights:
                 ga = ai_insights['genre_analysis']
-                genre = ga.get('primary_genre', 'Fiction').title()
-                answer_parts.append(f"## Genre & Themes\n**Primary Genre:** {genre}\n\n")
+                genre = ga.get('primary_genre', 'fiction').lower()
+                genre_desc = genre_descriptions.get(genre, "readers who appreciate quality storytelling")
                 
-                if 'secondary_genres' in ga and ga['secondary_genres']:
-                    answer_parts.append(f"**Related Genres:** {', '.join(g.title() for g in ga['secondary_genres'])}\n\n")
+                answer_parts.append(f"This book is perfect for **{genre_desc}**.\n\n")
                 
-                if 'indicators' in ga and ga['indicators']:
-                    answer_parts.append(f"**Key Themes Explored:**\n")
-                    for theme in ga['indicators'][:5]:
-                        answer_parts.append(f"- {theme.title()}\n")
-                    answer_parts.append("\n")
-            
-            if book_price:
-                answer_parts.append(f"## Pricing\nThis book is available for **{book_price}** at most major retailers. Price may vary between stores and formats (hardcover, paperback, ebook).\n\n")
-            
-            if 'review_sentiment' in ai_insights:
-                rs = ai_insights['review_sentiment']
-                sentiment = rs.get('sentiment_label', 'Mixed').title()
-                score = rs.get('sentiment_score', 0)
-                answer_parts.append(f"## Reader Reception\nThis book has received a **{sentiment}** reception from readers with approximately **{score:.0%}** positive sentiment. ")
-                if 'tone' in rs:
-                    answer_parts.append(f"The overall tone is described as **{rs['tone']}**.\n\n")
+                if genre in ['mystery', 'thriller', 'horror']:
+                    answer_parts.append("**You might enjoy this if you like:**\n")
+                    answer_parts.append("- Solving puzzles and uncovering secrets\n")
+                    answer_parts.append("- Suspenseful storytelling with unexpected twists\n")
+                    answer_parts.append("- Complex characters with hidden motives\n\n")
+                elif genre in ['romance']:
+                    answer_parts.append("**You might enjoy this if you like:**\n")
+                    answer_parts.append("- Emotionally rich narratives\n")
+                    answer_parts.append("- Compelling relationship dynamics\n")
+                    answer_parts.append("- Stories of love and personal growth\n\n")
+                elif genre in ['fantasy', 'science fiction']:
+                    answer_parts.append("**You might enjoy this if you like:**\n")
+                    answer_parts.append("- Immersive world-building\n")
+                    answer_parts.append("- imaginative concepts and ideas\n")
+                    answer_parts.append("- Escaping into new realities\n\n")
+                elif genre in ['literary fiction']:
+                    answer_parts.append("**You might enjoy this if you like:**\n")
+                    answer_parts.append("- Thoughtful, introspective reading\n")
+                    answer_parts.append("- Beautiful, evocative prose\n")
+                    answer_parts.append("- Stories that stay with you\n\n")
                 else:
-                    answer_parts.append("\n\n")
-            
-            if 'recommendations' in ai_insights and ai_insights['recommendations']:
-                answer_parts.append("## Similar Books You Might Enjoy\n")
-                for i, r in enumerate(ai_insights['recommendations'][:3], 1):
-                    if 'title' in r:
-                        author = r.get('author', 'Unknown Author')
-                        reason = r.get('reason', '')
-                        answer_parts.append(f"**{i}. {r['title']}** by {author}\n")
-                        if reason:
-                            answer_parts.append(f"   {reason}\n")
-                        answer_parts.append("\n")
+                    answer_parts.append("**You might enjoy this if you like:**\n")
+                    answer_parts.append("- Engaging storytelling\n")
+                    answer_parts.append("- Well-developed characters\n")
+                    answer_parts.append("- Meaningful themes and ideas\n\n")
+            else:
+                answer_parts.append("This book appeals to readers who enjoy engaging narratives with meaningful themes.\n\n")
+                answer_parts.append("**You might enjoy this if you like:**\n")
+                answer_parts.append("- Compelling storytelling\n")
+                answer_parts.append("- Memorable characters\n")
+                answer_parts.append("- Thoughtful exploration of ideas\n\n")
         
         # Price question
         elif any(word in prompt_lower for word in ['price', 'cost', 'how much', 'expensive', 'buy', 'purchase']):
