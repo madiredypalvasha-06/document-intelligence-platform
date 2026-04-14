@@ -17,7 +17,7 @@ import {
 import { bookApi, scrapingApi, sourcesApi } from '@/lib/api';
 import { useBookStore } from '@/store';
 import { BookCard } from '@/components/BookCard';
-import { Button, Input, Select, LoadingSpinner, Modal } from '@/components/ui';
+import { Button, Input, Select, LoadingSpinner, Modal, SkeletonBookList, Toast } from '@/components/ui';
 import type { Book, PaginatedResponse, ScrapingJob } from '@/types';
 
 const GENRES = [
@@ -325,8 +325,8 @@ export default function BooksPage() {
         )}
 
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center">
-            <LoadingSpinner size="lg" />
+          <div className="animate-fade-in">
+            <SkeletonBookList count={8} />
           </div>
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">

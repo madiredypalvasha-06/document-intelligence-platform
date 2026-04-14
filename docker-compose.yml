@@ -7,6 +7,43 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A books worker --loglevel=info
+    environment:
+      - DEBUG=True
+      - USE_MYSQL=False
+      - USE_LM_STUDIO=True
+      - LM_STUDIO_URL=http://host.docker.internal:1234/v1
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+    volumes:
+      - ./backend:/app
+      - chroma_data:/app/chroma_db/data
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A books beat --loglevel=info
+    environment:
+      - DEBUG=True
+      - USE_MYSQL=False
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - redis
 
   backend:
     build:
@@ -21,6 +58,7 @@ services:
       - LM_STUDIO_URL=http://host.docker.internal:1234/v1
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - redis
     volumes:

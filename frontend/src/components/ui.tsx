@@ -328,3 +328,139 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
     </svg>
   );
 }
+
+// Skeleton loading components for better UX
+export function Skeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'animate-pulse rounded-md bg-cream-200',
+        className
+      )}
+    />
+  );
+}
+
+export function SkeletonCard() {
+  return (
+    <div className="rounded-xl border border-cream-200 bg-white p-4 shadow-sm">
+      <Skeleton className="h-48 w-full rounded-lg mb-4" />
+      <Skeleton className="h-4 w-3/4 mb-2" />
+      <Skeleton className="h-4 w-1/2 mb-4" />
+      <div className="flex gap-2">
+        <Skeleton className="h-6 w-16 rounded-full" />
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonBookList({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <SkeletonCard key={i} />
+      ))}
+    </div>
+  );
+}
+
+export function SkeletonDetail() {
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-6">
+        <Skeleton className="h-80 w-64 rounded-xl" />
+        <div className="flex-1 space-y-4">
+          <Skeleton className="h-10 w-3/4" />
+          <Skeleton className="h-6 w-1/2" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-3/4" />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonChat() {
+  return (
+    <div className="space-y-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className={cn("flex", i % 2 === 0 ? 'justify-start' : 'justify-end')}>
+          <div className={cn(
+            "max-w-xs rounded-2xl p-4",
+            i % 2 === 0 ? 'bg-cream-100' : 'bg-gold-500 text-white'
+          )}>
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function LoadingOverlay({ message = "Loading..." }: { message?: string }) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm z-10 rounded-xl">
+      <LoadingSpinner size="lg" />
+      <p className="mt-4 text-sm font-medium text-obsidian-600 animate-pulse">
+        {message}
+      </p>
+    </div>
+  );
+}
+
+export function ProgressBar({ progress, className }: { progress: number; className?: string }) {
+  return (
+    <div className={cn("w-full h-2 bg-cream-200 rounded-full overflow-hidden", className)}>
+      <div
+        className="h-full bg-gradient-to-r from-gold-400 to-gold-500 transition-all duration-300 ease-out"
+        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+      />
+    </div>
+  );
+}
+
+// Toast notification component
+export function Toast({ 
+  message, 
+  type = 'info',
+  onClose 
+}: { 
+  message: string; 
+  type?: 'success' | 'error' | 'info' | 'warning';
+  onClose?: () => void;
+}) {
+  const typeStyles = {
+    success: 'bg-green-500 text-white',
+    error: 'bg-red-500 text-white',
+    info: 'bg-obsidian-800 text-white',
+    warning: 'bg-gold-500 text-white',
+  };
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose?.();
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={cn(
+      "fixed bottom-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg animate-slide-up",
+      "flex items-center gap-3",
+      typeStyles[type]
+    )}>
+      <span>{message}</span>
+      <button onClick={onClose} className="text-white/80 hover:text-white">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}

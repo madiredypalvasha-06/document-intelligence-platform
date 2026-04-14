@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { qaApi, bookApi } from '@/lib/api';
 import { useQAStore } from '@/store';
-import { Button, Select, LoadingSpinner } from '@/components/ui';
+import { Button, Select, LoadingSpinner, SkeletonChat, Toast } from '@/components/ui';
 import { copyToClipboard, generateSessionId, formatDateTime } from '@/lib/utils';
 import type { Book, Conversation } from '@/types';
 
@@ -319,9 +319,69 @@ function QAPageContent() {
                             <BookOpen className="h-3 w-3" />
                             About: {conv.book_title}
                           </p>
-                        )}
-                      </div>
+                  )}
+                </div>
+                <div ref={messagesEndRef} />
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="mt-8 animate-fade-in">
+                <div className="flex gap-4">
+                  <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400 to-gold-600">
+                    <Sparkles className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1 bg-white rounded-xl px-5 py-4 shadow-elegant border border-cream-100">
+                    <div className="flex items-center gap-3">
+                      <LoadingSpinner size="sm" />
+                      <span className="text-sm text-obsidian-500 animate-pulse">
+                        Thinking...
+                      </span>
                     </div>
+                    <div className="mt-4 space-y-2">
+                      <div className="h-3 bg-cream-100 rounded animate-pulse w-full"></div>
+                      <div className="h-3 bg-cream-100 rounded animate-pulse w-3/4"></div>
+                      <div className="h-3 bg-cream-100 rounded animate-pulse w-1/2"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-8">
+              <form onSubmit={handleSubmit} className="relative">
+                <div className="bg-white rounded-2xl border border-cream-200 shadow-elegant overflow-hidden">
+                  <textarea
+                    ref={textareaRef}
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="Ask a question about books..."
+                    rows={3}
+                    className="w-full resize-none border-0 px-5 py-4 focus:outline-none focus:ring-0 text-obsidian-800 placeholder:text-obsidian-400"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit(e);
+                      }
+                    }}
+                  />
+                  <div className="flex items-center justify-between border-t border-cream-200 px-5 py-3 bg-cream-50">
+                    <p className="text-xs text-obsidian-400">
+                      Press Enter to send, Shift+Enter for new line
+                    </p>
+                    <Button
+                      type="submit"
+                      disabled={!question.trim() || isLoading}
+                      loading={isLoading}
+                      variant="gold"
+                      icon={<Send className="h-4 w-4" />}
+                    >
+                      Send
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </div>
 
                     <div className="flex gap-4">
                       <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400 to-gold-600">

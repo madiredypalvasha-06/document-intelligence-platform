@@ -37,11 +37,14 @@ logger = logging.getLogger(__name__)
 def health_check(request):
     """Health check endpoint to verify system status."""
     from django.db import connection
+    from django.conf import settings
     
     health_data = {
         'status': 'healthy',
         'database': False,
         'chromadb': False,
+        'redis': False,
+        'celery': False,
         'embedding_model': 'unknown',
         'llm_available': False,
         'timestamp': timezone.now()
@@ -64,6 +67,23 @@ def health_check(request):
         health_data['embedding_model'] = embedding_service.get_model_name()
     except Exception as e:
         logger.error(f"Embedding model check failed: {e}")
+    
+    # Check Redis
+    try:
+        from .cache import redis_client
+        redis_client.ping()
+        health_data['redis'] = True
+    except Exception as e:
+        logger.warning(f"Redis health check failed: {e}")
+    
+    # Check Celery
+    try:
+        from .tasks import debug_task
+        result = debug_task.delay()
+        if result:
+            health_data['celery'] = True
+    except Exception as e:
+        logger.warning(f"Celery health check failed: {e}")
     
     serializer = HealthCheckSerializer(health_data)
     return Response(serializer.data)
@@ -133,7 +153,12 @@ class BookViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def process(self, request, pk=None):
-        """Process a book to generate embeddings and AI insights."""
+        """
+        Process a book to generate embeddings and AI insights.
+        
+        Supports both synchronous and background processing.
+        Use background=true to process asynchronously via Celery.
+        """
         book = self.get_object()
         
         if book.is_processed:
@@ -142,6 +167,31 @@ class BookViewSet(viewsets.ModelViewSet):
                 'ai_insights': book.ai_insights
             })
         
+        background = request.data.get('background', False)
+        
+        if background:
+            # Queue for background processing with Celery
+            try:
+                from .tasks import generate_book_insights, process_book_chunks
+                
+                # Queue both tasks
+                insights_task = generate_book_insights.delay(book.id)
+                chunks_task = process_book_chunks.delay(book.id)
+                
+                return Response({
+                    'message': 'Book queued for background processing',
+                    'task_ids': {
+                        'insights': str(insights_task.id),
+                        'chunks': str(chunks_task.id)
+                    },
+                    'status': 'queued'
+                }, status=status.HTTP_202_ACCEPTED)
+                
+            except Exception as e:
+                logger.warning(f"Celery not available, falling back to sync: {e}")
+                # Fall through to synchronous processing
+        
+        # Synchronous processing (original behavior)
         try:
             content = book.content_text or book.description or ""
             
