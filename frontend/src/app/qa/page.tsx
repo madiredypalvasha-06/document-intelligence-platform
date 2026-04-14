@@ -319,8 +319,35 @@ function QAPageContent() {
                             <BookOpen className="h-3 w-3" />
                             About: {conv.book_title}
                           </p>
-                  )}
-                </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400 to-gold-600">
+                        <Sparkles className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="bg-white rounded-xl px-5 py-4 shadow-elegant border border-cream-100">
+                          <p className="text-sm text-obsidian-800 leading-relaxed whitespace-pre-wrap">
+                            {conv.answer}
+                          </p>
+
+                          <div className="mt-4 flex items-center gap-5 text-xs text-obsidian-400">
+                            <span className="flex items-center gap-1.5">
+                              <Zap className="h-3 w-3" />
+                              {conv.model_used}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="h-3 w-3" />
+                              {conv.response_time.toFixed(2)}s
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 <div ref={messagesEndRef} />
               </div>
             )}
@@ -338,125 +365,8 @@ function QAPageContent() {
                         Thinking...
                       </span>
                     </div>
-                    <div className="mt-4 space-y-2">
-                      <div className="h-3 bg-cream-100 rounded animate-pulse w-full"></div>
-                      <div className="h-3 bg-cream-100 rounded animate-pulse w-3/4"></div>
-                      <div className="h-3 bg-cream-100 rounded animate-pulse w-1/2"></div>
-                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            <div className="mt-8">
-              <form onSubmit={handleSubmit} className="relative">
-                <div className="bg-white rounded-2xl border border-cream-200 shadow-elegant overflow-hidden">
-                  <textarea
-                    ref={textareaRef}
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Ask a question about books..."
-                    rows={3}
-                    className="w-full resize-none border-0 px-5 py-4 focus:outline-none focus:ring-0 text-obsidian-800 placeholder:text-obsidian-400"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit(e);
-                      }
-                    }}
-                  />
-                  <div className="flex items-center justify-between border-t border-cream-200 px-5 py-3 bg-cream-50">
-                    <p className="text-xs text-obsidian-400">
-                      Press Enter to send, Shift+Enter for new line
-                    </p>
-                    <Button
-                      type="submit"
-                      disabled={!question.trim() || isLoading}
-                      loading={isLoading}
-                      variant="gold"
-                      icon={<Send className="h-4 w-4" />}
-                    >
-                      Send
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </div>
-
-                    <div className="flex gap-4">
-                      <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-gold-400 to-gold-600">
-                        <Sparkles className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-white rounded-xl px-5 py-4 shadow-elegant border border-cream-100">
-                          <p className="text-sm text-obsidian-800 leading-relaxed whitespace-pre-wrap">
-                            {conv.answer}
-                          </p>
-
-                          {conv.sources && conv.sources.length > 0 && (
-                            <div className="mt-5 pt-5 border-t border-cream-200">
-                              <h4 className="text-xs font-bold text-obsidian-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <Sparkles className="h-3 w-3 text-gold-500" />
-                                Sources
-                              </h4>
-                              <div className="space-y-3">
-                                {conv.sources.map((source, i) => (
-                                  <div
-                                    key={i}
-                                    className="bg-cream-50 rounded-lg p-3 border border-cream-100"
-                                  >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <p className="text-xs text-obsidian-700 truncate flex-1 leading-relaxed">
-                                        {source.content_preview}
-                                      </p>
-                                      <div className="flex items-center gap-2 flex-shrink-0">
-                                        <span className="text-xs font-medium text-gold-600">
-                                          {(source.relevance_score * 100).toFixed(0)}%
-                                        </span>
-                                        <button
-                                          onClick={() =>
-                                            handleCopy(source.content_preview, conv.id * 100 + i)
-                                          }
-                                          className="text-obsidian-400 hover:text-obsidian-600 transition-colors"
-                                        >
-                                          {copiedId === conv.id * 100 + i ? (
-                                            <Check className="h-3.5 w-3.5 text-green-500" />
-                                          ) : (
-                                            <Copy className="h-3.5 w-3.5" />
-                                          )}
-                                        </button>
-                                      </div>
-                                    </div>
-                                    <p className="text-xs text-obsidian-400 mt-1.5">
-                                      {source.book_title}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-4 flex items-center gap-5 text-xs text-obsidian-400">
-                            <span className="flex items-center gap-1.5">
-                              <Zap className="h-3 w-3" />
-                              {conv.model_used}
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                              <Clock className="h-3 w-3" />
-                              {conv.response_time.toFixed(2)}s
-                            </span>
-                            {conv.retrieved_chunks !== undefined && (
-                              <span>
-                                {conv.retrieved_chunks} chunks retrieved
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
               </div>
             )}
 
