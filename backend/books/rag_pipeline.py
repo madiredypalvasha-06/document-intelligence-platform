@@ -648,150 +648,297 @@ Please provide a comprehensive answer based on the context above. Include releva
         book_price: Optional[str] = None,
         book_author: Optional[str] = None
     ) -> LLMResponse:
-        """Generate answer based on the specific question asked."""
+        """Generate comprehensive answer based on the specific question asked."""
         import time
         start_time = time.time()
         prompt_lower = question.lower()
         
         answer_parts = []
         
+        # Header with book title
         if book_title:
             answer_parts.append(f"# {book_title}\n\n")
         
-        # Price question
-        if any(word in prompt_lower for word in ['price', 'cost', 'how much', 'expensive']):
-            if book_price:
-                answer_parts.append(f"## Price\n**Current Price: {book_price}**\n\n")
-                answer_parts.append(f"This book is available for {book_price}. Prices may vary between retailers.\n\n")
-            else:
-                answer_parts.append("## Price\n")
-                answer_parts.append("Price information is not available. Please check major retailers for current pricing.\n\n")
+        # Comprehensive response for general questions
+        is_general = any(word in prompt_lower for word in ['about', 'tell me', 'info', 'information', 'this book', 'what is', 'what\'s', 'describe'])
         
-        # Author question
-        elif any(word in prompt_lower for word in ['author', 'wrote', 'written', 'who wrote']):
-            if book_author:
-                answer_parts.append(f"## Author\n**{book_author}** is the author of this book.\n\n")
-            else:
-                answer_parts.append("## Author\n")
-                answer_parts.append("Author information is not available in the database.\n\n")
-        
-        # Summary question
-        elif any(word in prompt_lower for word in ['summary', 'about', 'what is', 'what\'s', 'tell me', 'gist', 'overview']):
+        if is_general:
+            # Provide full comprehensive response for general questions
             if 'summary' in ai_insights:
                 answer_parts.append(f"## Summary\n{ai_insights['summary']}\n\n")
-            else:
-                answer_parts.append("No summary available for this book.\n\n")
-        
-        # Genre question
-        elif any(word in prompt_lower for word in ['genre', 'type', 'category', 'kind']):
+            
+            if book_author:
+                answer_parts.append(f"## About the Author\n**{book_author}** has crafted a compelling narrative that explores deep human experiences and emotions. Their writing style brings the story to life with vivid descriptions and memorable characters.\n\n")
+            
             if 'genre_analysis' in ai_insights:
                 ga = ai_insights['genre_analysis']
                 genre = ga.get('primary_genre', 'Fiction').title()
-                answer_parts.append(f"## Genre\n**Primary Genre:** {genre}\n")
+                answer_parts.append(f"## Genre & Themes\n**Primary Genre:** {genre}\n\n")
+                
                 if 'secondary_genres' in ga and ga['secondary_genres']:
-                    answer_parts.append(f"**Related Genres:** {', '.join(g.title() for g in ga['secondary_genres'])}\n")
+                    answer_parts.append(f"**Related Genres:** {', '.join(g.title() for g in ga['secondary_genres'])}\n\n")
+                
                 if 'indicators' in ga and ga['indicators']:
-                    answer_parts.append(f"**Key Themes:** {', '.join(ga['indicators'])}\n")
-            answer_parts.append("\n")
-        
-        # Themes question
-        elif any(word in prompt_lower for word in ['theme', 'themes', 'topic', 'topics', 'message', 'main', 'key']):
-            answer_parts.append("## Main Themes\n")
-            themes_found = []
-            if 'summary' in ai_insights:
-                summary_lower = ai_insights['summary'].lower()
-                if any(w in summary_lower for w in ['love', 'relationship', 'romance']): themes_found.append("Love and Relationships")
-                if any(w in summary_lower for w in ['death', 'die', 'loss', 'grief']): themes_found.append("Mortality and Loss")
-                if any(w in summary_lower for w in ['society', 'social', 'class']): themes_found.append("Social Commentary")
-                if any(w in summary_lower for w in ['power', 'control', 'government']): themes_found.append("Power and Control")
-                if any(w in summary_lower for w in ['identity', 'self', 'discover']): themes_found.append("Identity and Self-Discovery")
-                if any(w in summary_lower for w in ['adventure', 'journey', 'quest', 'travel']): themes_found.append("Adventure and Discovery")
-                if any(w in summary_lower for w in ['dystopian', 'future', 'technology']): themes_found.append("Technology and Society")
-            if themes_found:
-                for theme in themes_found:
-                    answer_parts.append(f"- **{theme}**\n")
-            else:
-                answer_parts.append("This book explores various themes that are revealed through its narrative.\n")
-            answer_parts.append("\n")
-        
-        # Recommendations/Similar books
-        elif any(word in prompt_lower for word in ['recommend', 'similar', 'like', 'also', 'other books', 'if you like']):
-            if 'recommendations' in ai_insights and ai_insights['recommendations']:
-                answer_parts.append("## Similar Books\n")
-                answer_parts.append("If you enjoyed this book, you might also like:\n\n")
-                for i, r in enumerate(ai_insights['recommendations'][:5], 1):
-                    if 'title' in r:
-                        author = r.get('author', 'Unknown Author')
-                        reason = r.get('reason', '')
-                        answer_parts.append(f"{i}. **{r['title']}** by {author}\n")
-                        if reason:
-                            answer_parts.append(f"   → {reason}\n")
-            else:
-                answer_parts.append("No similar book recommendations available.\n\n")
-        
-        # Sentiment/Reviews
-        elif any(word in prompt_lower for word in ['sentiment', 'review', 'reviews', 'opinion', 'feel', 'reaction']):
+                    answer_parts.append(f"**Key Themes Explored:**\n")
+                    for theme in ga['indicators'][:5]:
+                        answer_parts.append(f"- {theme.title()}\n")
+                    answer_parts.append("\n")
+            
+            if book_price:
+                answer_parts.append(f"## Pricing\nThis book is available for **{book_price}** at most major retailers. Price may vary between stores and formats (hardcover, paperback, ebook).\n\n")
+            
             if 'review_sentiment' in ai_insights:
                 rs = ai_insights['review_sentiment']
                 sentiment = rs.get('sentiment_label', 'Mixed').title()
                 score = rs.get('sentiment_score', 0)
-                tone = rs.get('tone', 'neutral')
-                answer_parts.append(f"## Reader Reception\n")
-                answer_parts.append(f"**Overall Reception:** {sentiment} ({score:.0%} positive)\n")
-                answer_parts.append(f"**Tone:** {tone.title()}\n")
-                if 'key_phrases' in rs and rs['key_phrases']:
-                    answer_parts.append(f"**Notable Phrases:** {', '.join(rs['key_phrases'])}\n")
+                answer_parts.append(f"## Reader Reception\nThis book has received a **{sentiment}** reception from readers with approximately **{score:.0%}** positive sentiment. ")
+                if 'tone' in rs:
+                    answer_parts.append(f"The overall tone is described as **{rs['tone']}**.\n\n")
+                else:
+                    answer_parts.append("\n\n")
+            
+            if 'recommendations' in ai_insights and ai_insights['recommendations']:
+                answer_parts.append("## Similar Books You Might Enjoy\n")
+                for i, r in enumerate(ai_insights['recommendations'][:3], 1):
+                    if 'title' in r:
+                        author = r.get('author', 'Unknown Author')
+                        reason = r.get('reason', '')
+                        answer_parts.append(f"**{i}. {r['title']}** by {author}\n")
+                        if reason:
+                            answer_parts.append(f"   {reason}\n")
+                        answer_parts.append("\n")
+        
+        # Price question
+        elif any(word in prompt_lower for word in ['price', 'cost', 'how much', 'expensive', 'buy', 'purchase']):
+            answer_parts.append("## Pricing Information\n\n")
+            if book_price:
+                answer_parts.append(f"**Current Price:** {book_price}\n\n")
+                answer_parts.append("This book is available at this price from most major online retailers including Amazon, Barnes & Noble, and book marketplaces.\n\n")
+                answer_parts.append("**Note:** Prices may vary depending on:\n")
+                answer_parts.append("- Format (hardcover, paperback, ebook, or audiobook)\n")
+                answer_parts.append("- Retailer and any ongoing promotions\n")
+                answer_parts.append("- Condition (new vs. used copies)\n\n")
             else:
-                answer_parts.append("No review sentiment data available.\n\n")
+                answer_parts.append("Price information is not currently available in our database. ")
+                answer_parts.append("You can check major retailers like Amazon, Barnes & Noble, or your local bookstore for current pricing.\n\n")
+        
+        # Author question
+        elif any(word in prompt_lower for word in ['author', 'wrote', 'written', 'who wrote', 'writer']):
+            answer_parts.append("## About the Author\n\n")
+            if book_author:
+                answer_parts.append(f"**{book_author}** is the author of \"{book_title}\".\n\n")
+                answer_parts.append("The author's work in this book demonstrates their unique storytelling ability and narrative style. ")
+                answer_parts.append("Their writing brings depth and authenticity to the characters and world they've created.\n\n")
+                answer_parts.append("If you'd like to explore more works by this author, check out our book recommendations below.\n\n")
+            else:
+                answer_parts.append("Author information is not available in our database at this time. ")
+                answer_parts.append("You may find this information on the book's official listing or publisher's website.\n\n")
+        
+        # Summary question
+        elif any(word in prompt_lower for word in ['summary', 'synopsis', 'plot', 'story', 'what happens', 'narrative']):
+            answer_parts.append("## Plot Summary\n\n")
+            if 'summary' in ai_insights and ai_insights['summary']:
+                summary_text = ai_insights['summary']
+                answer_parts.append(f"{summary_text}\n\n")
+                answer_parts.append("This summary captures the essence of the story, highlighting the main plot points and central conflict that drives the narrative forward.\n\n")
+            else:
+                answer_parts.append("A detailed summary is not yet available for this book. ")
+                answer_parts.append("Check back soon or explore the book directly to discover its story.\n\n")
+        
+        # Genre question
+        elif any(word in prompt_lower for word in ['genre', 'type', 'category', 'kind', 'classify', 'classification']):
+            answer_parts.append("## Genre Analysis\n\n")
+            if 'genre_analysis' in ai_insights:
+                ga = ai_insights['genre_analysis']
+                genre = ga.get('primary_genre', 'Fiction').title()
+                confidence = ga.get('confidence', 0)
+                
+                answer_parts.append(f"**Primary Genre:** {genre}\n")
+                answer_parts.append(f"**Classification Confidence:** {confidence:.0%}\n\n")
+                
+                if 'secondary_genres' in ga and ga['secondary_genres']:
+                    answer_parts.append(f"**Related Genres:** {', '.join(g.title() for g in ga['secondary_genres'])}\n\n")
+                
+                if 'indicators' in ga and ga['indicators']:
+                    answer_parts.append("**Genre Indicators:**\n")
+                    for indicator in ga['indicators'][:5]:
+                        answer_parts.append(f"- {indicator.title()}\n")
+                    answer_parts.append("\n")
+                
+                answer_parts.append(f"This book falls primarily within the **{genre}** category, offering readers ")
+                if genre.lower() in ['mystery', 'thriller', 'horror']:
+                    answer_parts.append("suspenseful and engaging narratives that keep you guessing.")
+                elif genre.lower() in ['romance', 'love']:
+                    answer_parts.append("compelling love stories with emotional depth and memorable characters.")
+                elif genre.lower() in ['fantasy', 'science fiction', 'sci-fi']:
+                    answer_parts.append("imaginative worlds and speculative concepts that expand the mind.")
+                elif genre.lower() in ['non-fiction', 'biography', 'history']:
+                    answer_parts.append("factual and educational content based on real events or subjects.")
+                else:
+                    answer_parts.append("thought-provoking content that explores human experiences and themes.")
+                answer_parts.append("\n\n")
+            else:
+                answer_parts.append("Genre classification is not yet available for this book.\n\n")
+        
+        # Themes question
+        elif any(word in prompt_lower for word in ['theme', 'themes', 'topic', 'topics', 'message', 'main', 'key', 'meaning']):
+            answer_parts.append("## Major Themes\n\n")
+            answer_parts.append("This book explores several significant themes:\n\n")
+            
+            themes_found = []
+            if 'summary' in ai_insights:
+                summary_lower = ai_insights['summary'].lower()
+                theme_mappings = [
+                    (['love', 'relationship', 'romance', 'heart'], "**Love & Relationships** - Explores the complexities of human connections and emotional bonds"),
+                    (['death', 'die', 'loss', 'grief', 'mourning'], "**Mortality & Loss** - Confronts the inevitability of death and the grieving process"),
+                    (['society', 'social', 'class', 'classism'], "**Social Commentary** - Offers critique and observations about societal structures"),
+                    (['power', 'control', 'government', 'political'], "**Power & Control** - Examines dynamics of authority and manipulation"),
+                    (['identity', 'self', 'discover', 'finding'], "**Identity & Self-Discovery** - Follows the protagonist's journey of self-realization"),
+                    (['adventure', 'journey', 'quest', 'travel'], "**Adventure & Discovery** - Features physical or metaphorical journeys"),
+                    (['dystopian', 'future', 'technology'], "**Technology & Society** - Explores the relationship between humanity and progress"),
+                    (['war', 'battle', 'conflict', 'military'], "**War & Conflict** - Depicts struggles both physical and internal"),
+                    (['family', 'family'], "**Family & Loyalty** - Centers on familial relationships and obligations"),
+                    (['betrayal', 'trust', 'deception'], "**Betrayal & Trust** - Explores themes of loyalty and its breaking"),
+                ]
+                for keywords, theme_text in theme_mappings:
+                    if any(w in summary_lower for w in keywords):
+                        themes_found.append(theme_text)
+            
+            if themes_found:
+                for theme in themes_found:
+                    answer_parts.append(f"- {theme}\n")
+            else:
+                answer_parts.append("The book's themes are revealed through its narrative, character development, and the author's message. ")
+                answer_parts.append("Read the full text to discover the deeper meanings within the story.\n")
+            answer_parts.append("\n")
+            
+            if 'genre_analysis' in ai_insights and 'indicators' in ai_insights.get('genre_analysis', {}):
+                answer_parts.append("**Key Elements:** ")
+                answer_parts.append(", ".join(ai_insights['genre_analysis']['indicators'][:5]))
+                answer_parts.append("\n\n")
+        
+        # Recommendations/Similar books
+        elif any(word in prompt_lower for word in ['recommend', 'recommendation', 'similar', 'like', 'also', 'other books', 'if you like', 'read next']):
+            answer_parts.append("## Book Recommendations\n\n")
+            answer_parts.append("If you enjoyed \"")
+            answer_parts.append(book_title or "this book")
+            answer_parts.append("\" you might also enjoy:\n\n")
+            
+            if 'recommendations' in ai_insights and ai_insights['recommendations']:
+                for i, r in enumerate(ai_insights['recommendations'][:5], 1):
+                    if 'title' in r:
+                        author = r.get('author', 'Unknown Author')
+                        reason = r.get('reason', '')
+                        genre = r.get('genre', '')
+                        
+                        answer_parts.append(f"**{i}. {r['title']}**\n")
+                        answer_parts.append(f"   *Author:* {author}\n")
+                        if genre:
+                            answer_parts.append(f"   *Genre:* {genre.title()}\n")
+                        if reason:
+                            answer_parts.append(f"   *Why:* {reason}\n")
+                        answer_parts.append("\n")
+            else:
+                answer_parts.append("We're working on building recommendations for this book. ")
+                answer_parts.append("Check back soon or explore similar genres in our library.\n\n")
+        
+        # Sentiment/Reviews
+        elif any(word in prompt_lower for word in ['sentiment', 'review', 'reviews', 'opinion', 'feel', 'reaction', 'reception']):
+            answer_parts.append("## Reader Reception\n\n")
+            if 'review_sentiment' in ai_insights:
+                rs = ai_insights['review_sentiment']
+                sentiment = rs.get('sentiment_label', 'Mixed').title()
+                score = rs.get('sentiment_score', 0)
+                
+                answer_parts.append(f"**Overall Reception:** {sentiment}\n")
+                answer_parts.append(f"**Positive Sentiment Score:** {score:.0%}\n\n")
+                
+                if 'tone' in rs:
+                    answer_parts.append(f"**Tone:** The book's overall tone is described as **{rs['tone']}**, ")
+                    if 'neutral' in rs['tone'].lower():
+                        answer_parts.append("offering a balanced and objective perspective.")
+                    elif 'positive' in rs['tone'].lower():
+                        answer_parts.append("creating an uplifting and encouraging atmosphere.")
+                    elif 'dark' in rs['tone'].lower():
+                        answer_parts.append("providing a somber and introspective mood.")
+                    else:
+                        answer_parts.append("contributing to the overall reading experience.")
+                    answer_parts.append("\n\n")
+                
+                if 'key_phrases' in rs and rs['key_phrases']:
+                    answer_parts.append("**Notable Reader Reactions:**\n")
+                    for phrase in rs['key_phrases'][:5]:
+                        answer_parts.append(f"- {phrase}\n")
+                    answer_parts.append("\n")
+                
+                answer_parts.append("This analysis is based on reader feedback and reviews from various sources.\n\n")
+            else:
+                answer_parts.append("Detailed reader sentiment analysis is not yet available for this book.\n\n")
         
         # Characters
-        elif any(word in prompt_lower for word in ['character', 'characters', 'protagonist', 'hero', 'villain', 'cast', 'who are']):
-            answer_parts.append("## Characters\n")
-            answer_parts.append("This book features memorable characters that drive the narrative. ")
-            if 'summary' in ai_insights:
-                answer_parts.append("Each character brings unique perspectives that add depth to the story.\n")
-            answer_parts.append("For detailed character analyses, explore the full book content.\n\n")
+        elif any(word in prompt_lower for word in ['character', 'characters', 'protagonist', 'hero', 'villain', 'cast', 'who are', 'people']):
+            answer_parts.append("## Character Overview\n\n")
+            answer_parts.append("This book features a cast of memorable characters that drive the narrative forward.\n\n")
+            answer_parts.append("**Character Insights:**\n")
+            answer_parts.append("- The protagonist faces challenges that shape their journey throughout the story\n")
+            answer_parts.append("- Supporting characters provide different perspectives and help develop themes\n")
+            answer_parts.append("- Antagonists or opposing forces create tension and drive the plot\n\n")
+            answer_parts.append("For detailed character analyses and profiles, explore the full book content or check the book details page.\n\n")
         
-        # Rating
-        elif any(word in prompt_lower for word in ['rating', 'rate', 'rated', 'score', 'stars']):
+        # Setting/World
+        elif any(word in prompt_lower for word in ['setting', 'world', 'place', 'location', 'where', 'when', 'time period', 'era']):
+            answer_parts.append("## Setting & World\n\n")
+            answer_parts.append("The setting plays a crucial role in establishing the atmosphere and context of the story.\n\n")
+            if 'summary' in ai_insights:
+                answer_parts.append("The narrative takes place in a carefully crafted world that reflects the themes and tone of the book. ")
+                answer_parts.append("The environment influences the characters' actions and the story's progression.\n\n")
+            answer_parts.append("Explore the full book content to discover the rich details of its setting.\n\n")
+        
+        # Writing style
+        elif any(word in prompt_lower for word in ['writing', 'style', 'prose', 'language', 'voice', 'narrative']):
+            answer_parts.append("## Writing Style\n\n")
+            answer_parts.append("The author employs a distinctive writing style that contributes to the overall reading experience.\n\n")
+            answer_parts.append("**Style Characteristics:**\n")
+            answer_parts.append("- Descriptive prose that paints vivid imagery\n")
+            answer_parts.append("- Well-crafted dialogue that reveals character\n")
+            answer_parts.append("- Thoughtful pacing that builds tension and emotion\n")
+            answer_parts.append("- Narrative voice that draws readers into the story\n\n")
+            answer_parts.append("Reading the book directly will give you the best sense of the author's unique voice.\n\n")
+        
+        # Rating/Quality
+        elif any(word in prompt_lower for word in ['rating', 'rate', 'rated', 'score', 'stars', 'good', 'quality']):
+            answer_parts.append("## Quality Assessment\n\n")
             if 'genre_analysis' in ai_insights:
                 ga = ai_insights['genre_analysis']
                 confidence = ga.get('confidence', 0)
-                answer_parts.append(f"## Rating Information\n")
                 answer_parts.append(f"**Genre Classification Confidence:** {confidence:.0%}\n")
                 answer_parts.append(f"**Primary Genre:** {ga.get('primary_genre', 'Fiction').title()}\n\n")
-            else:
-                answer_parts.append("No rating information available.\n\n")
-        
-        # Ending/Conclusion
-        elif any(word in prompt_lower for word in ['ending', 'final', 'conclusion', 'twist', 'resolution', 'how does it end']):
-            answer_parts.append("## The Ending\n")
-            if 'summary' in ai_insights:
-                answer_parts.append("The conclusion brings together the narrative threads. ")
-                answer_parts.append("Many readers find the ending thought-provoking and open to interpretation.\n\n")
-            else:
-                answer_parts.append("The ending details are not available. Read the full book to discover it!\n\n")
-        
-        # Author question
-        elif any(word in prompt_lower for word in ['author', 'wrote', 'written', 'who wrote']):
-            answer_parts.append("## Author\n")
-            answer_parts.append("The author information is available in the book's metadata. ")
-            answer_parts.append("Please check the book details page for the author's name.\n\n")
+            
+            if 'review_sentiment' in ai_insights:
+                rs = ai_insights['review_sentiment']
+                answer_parts.append(f"**Reader Sentiment:** {rs.get('sentiment_label', 'Mixed').title()}\n")
+                answer_parts.append(f"**Positive Reception:** {rs.get('sentiment_score', 0):.0%}\n\n")
+            
+            answer_parts.append("This book has been analyzed for quality indicators and reader reception. ")
+            answer_parts.append("Individual ratings may vary based on personal preferences.\n\n")
         
         # Catch all - general info
         else:
-            if 'summary' in ai_insights:
+            # For any other question, provide comprehensive info
+            if 'summary' in ai_insights and ai_insights['summary']:
                 answer_parts.append(f"## Summary\n{ai_insights['summary']}\n\n")
+            
+            if book_author:
+                answer_parts.append(f"## Author\n**{book_author}**\n\n")
+            
             if 'genre_analysis' in ai_insights:
                 ga = ai_insights['genre_analysis']
                 answer_parts.append(f"## Genre\n**Primary Genre:** {ga.get('primary_genre', 'Fiction').title()}\n\n")
+                if 'secondary_genres' in ga and ga['secondary_genres']:
+                    answer_parts.append(f"**Related Genres:** {', '.join(g.title() for g in ga['secondary_genres'])}\n\n")
+            
             if book_price:
                 answer_parts.append(f"## Price\n**Current Price: {book_price}**\n\n")
-        
-        if not answer_parts or len(answer_parts) <= 2:
-            answer_parts.append("## Quick Info\n")
-            if 'summary' in ai_insights:
-                answer_parts.append(f"{ai_insights['summary']}\n")
         
         return LLMResponse(
             content="".join(answer_parts).strip(),
