@@ -1,3 +1,7 @@
+/**
+ * API Client for Document Intelligence Platform
+ * Handles all HTTP requests to the backend API
+ */
 import axios from 'axios';
 import type {
   Book,
@@ -11,17 +15,20 @@ import type {
   PaginatedResponse,
 } from '@/types';
 
+// Base URL for the backend API
 const API_BASE_URL = 'http://localhost:8000/api';
 
+// Create axios instance with default configuration
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
-  timeout: 60000,
+  timeout: 60000, // 60 second timeout for long-running requests
 });
 
+// Request interceptor - logs all outgoing requests
 api.interceptors.request.use(
   (config) => {
     console.log('API Request:', config.method?.toUpperCase(), config.url);
@@ -33,6 +40,7 @@ api.interceptors.request.use(
   }
 );
 
+// Response interceptor - logs all responses and handles errors
 api.interceptors.response.use(
   (response) => {
     console.log('API Response:', response.status, response.config.url);
@@ -44,7 +52,14 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * Book API - Endpoints for book operations
+ */
 export const bookApi = {
+  /**
+   * List all books with optional filtering
+   * @param params - Query parameters for filtering and pagination
+   */
   list: async (params?: {
     page?: number;
     search?: string;
@@ -57,6 +72,10 @@ export const bookApi = {
     return data;
   },
 
+  /**
+   * Get a single book by ID
+   * @param id - Book ID
+   */
   get: async (id: number): Promise<Book> => {
     const { data } = await api.get(`/books/${id}/`);
     return data;

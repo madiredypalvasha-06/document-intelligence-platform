@@ -71,22 +71,34 @@ class LLMResponse:
 
 
 class EmbeddingService:
-    """Service for generating text embeddings."""
+    """
+    Service for generating text embeddings using Sentence Transformers.
     
-    _instance = None
-    _model = None
+    Uses a singleton pattern to ensure only one model instance is loaded.
+    Supports batch processing for efficient embedding generation.
+    """
+    
+    _instance = None  # Singleton instance
+    _model = None     # Cached model instance
     
     def __new__(cls):
+        """Implement singleton pattern."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self):
+        """Initialize the service and load the model if not already loaded."""
         if self._model is None:
             self._initialize_model()
     
     def _initialize_model(self):
-        """Initialize the embedding model."""
+        """
+        Initialize the Sentence Transformer model.
+        
+        Loads the model specified in settings (default: all-MiniLM-L6-v2)
+        which is a fast, lightweight model suitable for most use cases.
+        """
         model_name = getattr(settings, 'EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
         try:
             logger.info(f"Loading embedding model: {model_name}")
@@ -97,7 +109,16 @@ class EmbeddingService:
             raise
     
     def generate_embeddings(self, texts: List[str], batch_size: int = 32) -> np.ndarray:
-        """Generate embeddings for a list of texts."""
+        """
+        Generate embeddings for a list of texts.
+        
+        Args:
+            texts: List of text strings to embed
+            batch_size: Number of texts to process at once
+            
+        Returns:
+            numpy array of embeddings
+        """
         if not texts:
             return np.array([])
         
@@ -114,13 +135,30 @@ class EmbeddingService:
         return embeddings
     
     def generate_embedding_with_id(self, text: str) -> Tuple[np.ndarray, str]:
-        """Generate embedding and return with unique ID."""
+        """
+        Generate embedding and return with unique ID.
+        
+        Args:
+            text: Text to embed
+            
+        Returns:
+            Tuple of (embedding array, unique ID hash)
+        """
         embedding = self._model.encode([text], convert_to_numpy=True)[0]
         embedding_id = hashlib.md5(text.encode()).hexdigest()
         return embedding, embedding_id
     
     def compute_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
-        """Compute cosine similarity between two embeddings."""
+        """
+        Compute cosine similarity between two embeddings.
+        
+        Args:
+            embedding1: First embedding vector
+            embedding2: Second embedding vector
+            
+        Returns:
+            Cosine similarity score between -1 and 1
+        """
         norm1 = np.linalg.norm(embedding1)
         norm2 = np.linalg.norm(embedding2)
         if norm1 == 0 or norm2 == 0:
@@ -138,9 +176,19 @@ class EmbeddingService:
 
 
 class LLMService:
-    """Service for interacting with LLM APIs (OpenAI, Anthropic, LM Studio)."""
+    """
+    Service for interacting with LLM APIs.
+    
+    Supports multiple LLM providers:
+    - LM Studio (local, free)
+    - OpenAI GPT
+    - Anthropic Claude
+    
+    Automatically falls back to LM Studio if other APIs are unavailable.
+    """
     
     def __init__(self):
+        """Initialize LLM service with API keys from settings."""
         self.openai_key = getattr(settings, 'OPENAI_API_KEY', '')
         self.anthropic_key = getattr(settings, 'ANTHROPIC_API_KEY', '')
         self.lm_studio_url = getattr(settings, 'LM_STUDIO_URL', 'http://localhost:1234/v1')

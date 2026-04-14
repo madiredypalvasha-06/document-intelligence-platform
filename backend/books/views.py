@@ -35,10 +35,21 @@ logger = logging.getLogger(__name__)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def health_check(request):
-    """Health check endpoint to verify system status."""
+    """
+    Health check endpoint to verify system status.
+    
+    Returns the status of all system components:
+    - Database connection
+    - ChromaDB vector store
+    - Redis cache
+    - Celery worker
+    - Embedding model availability
+    - LLM availability
+    """
     from django.db import connection
     from django.conf import settings
     
+    # Initialize health status with all components set to False
     health_data = {
         'status': 'healthy',
         'database': False,
@@ -50,6 +61,7 @@ def health_check(request):
         'timestamp': timezone.now()
     }
     
+    # Check database connectivity
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
@@ -58,17 +70,19 @@ def health_check(request):
         logger.error(f"Database health check failed: {e}")
         health_data['status'] = 'degraded'
     
+    # Check ChromaDB availability
     try:
         health_data['chromadb'] = chroma_store.is_available()
     except Exception as e:
         logger.error(f"ChromaDB health check failed: {e}")
     
+    # Check embedding model
     try:
         health_data['embedding_model'] = embedding_service.get_model_name()
     except Exception as e:
         logger.error(f"Embedding model check failed: {e}")
     
-    # Check Redis
+    # Check Redis cache connectivity
     try:
         from .cache import redis_client
         redis_client.ping()
@@ -76,7 +90,7 @@ def health_check(request):
     except Exception as e:
         logger.warning(f"Redis health check failed: {e}")
     
-    # Check Celery
+    # Check Celery worker availability
     try:
         from .tasks import debug_task
         result = debug_task.delay()
@@ -90,12 +104,22 @@ def health_check(request):
 
 
 class BookViewSet(viewsets.ModelViewSet):
-    """ViewSet for Book CRUD operations."""
+    """
+    ViewSet for Book CRUD operations and search.
+    
+    Provides endpoints for:
+    - Listing books with filtering and pagination
+    - Retrieving book details
+    - Creating/updating books
+    - Processing books with AI insights
+    - Getting recommendations
+    """
     
     queryset = Book.objects.all()
     permission_classes = [AllowAny]
     
     def get_serializer_class(self):
+        """Return appropriate serializer based on the action."""
         if self.action == 'list':
             return BookListSerializer
         elif self.action in ['create', 'update', 'partial_update']:
@@ -103,8 +127,19 @@ class BookViewSet(viewsets.ModelViewSet):
         return BookDetailSerializer
     
     def get_queryset(self):
+        """
+        Get filtered queryset based on query parameters.
+        
+        Supported filters:
+        - search: Search in title, author, and description
+        - genre: Filter by genre
+        - source: Filter by source (goodreads, amazon, etc.)
+        - featured: Filter featured books only
+        - sort: Sort by field (rating, title, created_at)
+        """
         queryset = Book.objects.all()
         
+        # Search across multiple fields
         search = self.request.query_params.get('search', None)
         if search:
             queryset = queryset.filter(
@@ -113,14 +148,17 @@ class BookViewSet(viewsets.ModelViewSet):
                 Q(description__icontains=search)
             )
         
+        # Filter by genre
         genre = self.request.query_params.get('genre', None)
         if genre:
             queryset = queryset.filter(genre=genre)
         
+        # Filter by source
         source = self.request.query_params.get('source', None)
         if source:
             queryset = queryset.filter(source=source)
         
+        # Filter featured books only
         featured = self.request.query_params.get('featured', None)
         if featured and featured.lower() == 'true':
             queryset = queryset.filter(is_featured=True)
