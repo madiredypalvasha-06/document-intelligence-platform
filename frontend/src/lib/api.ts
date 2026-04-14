@@ -76,8 +76,14 @@ export const bookApi = {
     await api.delete(`/books/${id}/`);
   },
 
-  process: async (id: number): Promise<{ message: string; chunks_created: number; ai_insights: Book['ai_insights'] }> => {
-    const { data } = await api.post(`/books/${id}/process/`);
+  process: async (id: number, background: boolean = false): Promise<{ 
+    message: string; 
+    chunks_created?: number; 
+    ai_insights?: Book['ai_insights'];
+    task_ids?: { insights: string; chunks: string };
+    status?: string;
+  }> => {
+    const { data } = await api.post(`/books/${id}/process/`, { background });
     return data;
   },
 

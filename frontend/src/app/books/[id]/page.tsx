@@ -33,6 +33,7 @@ export default function BookDetailPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'ai' | 'similar'>('overview');
+  const [useBackground, setUseBackground] = useState(false);
 
   const bookId = params?.id ? parseInt(params.id as string) : null;
 
@@ -66,8 +67,13 @@ export default function BookDetailPage() {
     if (!book) return;
     setProcessing(true);
     try {
-      const result = await bookApi.process(book.id);
-      setBook({ ...book, is_processed: true, ai_insights: result.ai_insights });
+      const result = await bookApi.process(book.id, useBackground);
+      if (useBackground && result.task_ids) {
+        alert('Book queued for background processing! Task IDs: ' + JSON.stringify(result.task_ids));
+      }
+      if (result.ai_insights) {
+        setBook({ ...book, is_processed: true, ai_insights: result.ai_insights });
+      }
     } catch (error) {
       console.error('Failed to process book:', error);
     } finally {
@@ -161,17 +167,32 @@ export default function BookDetailPage() {
                     <p className="mt-4 text-obsidian-600 leading-relaxed">{book.description}</p>
                   )}
 
-                  <div className="mt-6 flex gap-3">
+                  <div className="mt-6 flex flex-wrap gap-3">
                     <Link href={`/qa?book=${book.id}`}>
                       <Button variant="gold" icon={<MessageCircle className="h-4 w-4" />}>
                         Ask Questions
                       </Button>
                     </Link>
-                    {!book.is_processed && (
-                      <Button variant="outline" onClick={handleProcess} loading={processing} icon={<Sparkles className="h-4 w-4" />}>
-                        Generate AI Insights
-                      </Button>
-                    )}
+                    <Button 
+                      variant={book.is_processed ? "outline" : "secondary"} 
+                      onClick={handleProcess} 
+                      loading={processing} 
+                      icon={<Sparkles className="h-4 w-4" />}
+                    >
+                      {book.is_processed ? 'Re-process' : 'Generate AI Insights'}
+                    </Button>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="backgroundProcess"
+                        checked={useBackground}
+                        onChange={(e) => setUseBackground(e.target.checked)}
+                        className="w-4 h-4 rounded border-obsidian-300 text-gold-500 focus:ring-gold-400"
+                      />
+                      <label htmlFor="backgroundProcess" className="text-sm text-obsidian-600">
+                        Background (Celery)
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
